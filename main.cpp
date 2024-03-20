@@ -1,0 +1,412 @@
+#include "circle.h"
+#include <GL/glut.h>
+#include <time.h>
+#include <windows.h>
+#include <iostream>
+#include <string>
+
+/*TODO:
+Create start screen
+Create game over screen
+Create win screen
+Randomize ball spawn location
+Have ball bounce on bricks
+Have bricks be destroyed by ball
+Create music
+Have music tracks play dependant on the number of lives remaining
+Have music tracks loop
+Add sound effects for the ball bouncing off of different surfaces
+*/
+
+
+float rowColorR[5] = { 1,0, 0,0.5,1}; //Store the RGB values for the colors of the bricks
+float rowColorG[5] = { 0, 1,0,0,1};
+float rowColorB[5] = { 0, 0,1,0.5,0};
+
+bool bricks[100]; //An array to store the status of every brick.
+
+
+
+int windowLen = 1000;
+int windowHeight = 500;
+
+int lives = 4;
+
+int musicTime = 0;
+const int SPEED = 17; //Number of ms to wait between refreshing the screen. A value of 17 should be around 60 FPS, as 1000(# of ms)/60 = 16.666666...
+
+bool liveBall = false; //Variable to track if there is currently a ball. If there is a ball, this will be true, otherwise it will be false. It starts as false.
+int ballX = 400; //The X and Y location of the ball's center. This will be randomly generated when the game is complete, but is set to the center for now.
+int ballY = 360;
+char ballLR = 'l'; //Variable to track the ball's horizontal direction.
+char ballUD = 'd'; //Variable to track the ball's vertical direction.
+const int radius = 10;
+int stallCount = 0;
+
+int paddleX = 425; //This variable will hold the x position of the left side of the paddle. The other side will be calculated on the fly.
+
+bool win = false;
+bool loss = false;
+bool gameStart = false; //TEMPORARY VALUE, SET TO FALSE BEFORE SUBMISSION
+
+const int brickLen = 50;
+const int brickHeight = 25;
+
+void playMusic() //This is the function to play the different music tracks.
+{
+
+    if (lives == 3) //Song for all lives remaining
+    {
+        PlaySound(TEXT("3Lives.wav"), NULL, SND_ASYNC);
+    }
+    
+    else if (lives == 2) //Song for 2 spare lives remaining
+    {
+        PlaySound(TEXT("2Lives.wav"), NULL, SND_ASYNC);
+    }
+
+    else if (lives == 1) //Song for 1 spare life remaining
+    {
+        PlaySound(TEXT("1Lives.wav"), NULL, SND_ASYNC);
+    }
+
+    else if (lives == 0) //Song for final life
+    {
+        PlaySound(TEXT("0Lives.wav"), NULL, SND_ASYNC);
+    }
+}
+
+void placeBricks() //This function will place the bricks and lines used to help the user differentiate them.
+{
+    for (int row = 1; row <= 5; row++) //Iterate through the rows.
+    {
+        for (int i = 0; i < windowLen; i += brickLen) //Place the 20 bricks in each row.
+        {
+            glColor3f(rowColorR[row - 1], rowColorG[row - 1], rowColorB[row - 1]);
+            glBegin(GL_POLYGON);
+            glVertex2i(i, 450 - (brickHeight * row));
+            glVertex2i(i + brickLen, 450 - (brickHeight * row));
+            glVertex2i(i + brickLen, 450 - (brickHeight * (row - 1)));
+            glVertex2i(i, 450 - (brickHeight * (row - 1)));
+            glEnd();
+
+            glColor3f(0, 0, 0); //Place the vertical lines.
+            glBegin(GL_LINES);
+            glVertex2i(i + brickLen, 450 - (brickHeight * row));
+            glVertex2i(i + brickLen, 450 - (brickHeight * (row - 1)));
+            glEnd();
+        }
+    }
+}
+
+
+void paddle() //This is the function to draw the paddle on the screen.
+{
+    glBegin(GL_POLYGON);
+    glVertex2i(paddleX, 50);
+    glVertex2i(paddleX + 150, 50);
+    glVertex2i(paddleX + 150, 60);
+    glVertex2i(paddleX, 60);
+    glEnd();
+
+}
+
+void paddleCollision() //This is a function to check if the ball is in contact with the top of the paddle.
+{
+    if (ballY - 10 <= 60)
+    {
+        for (int i = ballX - 10; i <= ballX + 10; i++)
+        {
+            if (ballY - 10 <= 60 && ballY - 10 >= 50 && i >= paddleX && i <= paddleX + 150)
+            {
+                ballUD = 'u';
+                return;
+            }
+        }
+    }
+}
+
+void drawLives() //This function will draw both the icon and text to show the user the number of remaining lives.
+{
+    fillCircle(10, 15, 485);
+    glRasterPos2f(30, 475);
+    glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, 'x');
+    glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, lives+48);
+}
+
+void wallCollision() //This is a function to track the ball's collision with a wall.
+{
+    if (ballX - radius <= 0)//If the left of the ball hits the wall
+    {
+        ballLR = 'r';
+        PlaySound(TEXT("wallBounce.wav"), NULL, SND_ASYNC);
+    }
+
+    if (ballX + radius >= windowLen)//If the right side of the ball hits the wall
+    {
+        ballLR = 'l';
+        PlaySound(TEXT("wallBounce.wav"), NULL, SND_ASYNC);
+    }
+
+    if (ballY - radius <= 0) //If the bottom of the ball hits the wall
+    {
+        liveBall = false; //If the ball hits the floor, it should die.
+    }
+
+    if (ballY + radius >= windowHeight) //If the top of the ball hits the wall
+    {
+        ballUD = 'd';
+    }
+}
+
+void brickCollision()
+{
+    if (ballY >= 325) //Only check for a collision of the ball is at, or above the bricks.
+    {
+
+        int brickNum = (ballX / brickLen) - 1; //The number of the brick in it's row, as well as the brick to the left and right of it. Begins at 0.
+        int leftBrick = brickNum - 1;
+        int rightBrick = brickNum + 1;
+
+        int ballTop = ballY + 10; //The Y coordinates of the top and bottom of the ball.
+        int ballBottom = ballY - 10;
+        int ballLeft = ballX - 10; //The X coordinates of the left and right of the ball.
+        int ballRight = ballX + 10;
+
+
+    }
+}
+
+void init() 
+{
+    glClearColor(0.0, 0.0, 0.0, 1.0); //Set background color to black
+    glMatrixMode(GL_PROJECTION);
+    gluOrtho2D(0, windowLen, 0, windowHeight); //Create the viewbox, and set its size.
+}
+
+void checkWin() //A function to check if the player has won the game.
+{
+    for (int i = 0; i < 100; i++)
+    {
+        if (bricks[i] == true)
+        {
+            return;
+        }
+    }
+    win = true;
+}
+
+void checkLoss()
+{
+    if (lives == 0 && liveBall == false)
+    {
+        loss = true;
+    }
+}
+
+void tutorial()
+{
+    std::string intro = "Welcome to Breakout! Use the paddle to bounce the ball and break the bricks.";
+    std::string intro2 = " The game is lost when all lives are lost. The game is won when all bricks are destroyed.";
+    std::string controls = "Use the A and D keys to move the paddle left and right. Use the space key to spawn a new ball.";
+    std::string start = "Press space to begin!";
+
+    glRasterPos2f(5, windowHeight-20);
+    for (int i = 0; i < intro.length(); i++)
+    {
+        glutBitmapCharacter (GLUT_BITMAP_HELVETICA_18, intro[i]);
+    }
+
+    glRasterPos2f(0, windowHeight - 60);
+    for (int i = 0; i < intro2.length(); i++)
+    {
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, intro2[i]);
+    }
+
+    glRasterPos2f(5, windowHeight - 100);
+    for (int i = 0; i < controls.length(); i++)
+    {
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, controls[i]);
+    }
+
+    glRasterPos2f(5, windowHeight - 140);
+    for (int i = 0; i < start.length(); i++)
+    {
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, start[i]);
+    }
+}
+
+void winScreen()
+{
+
+}
+
+void lossScreen()
+{
+
+}
+
+void display() //Run all of the functions to draw the shapes, as well as change the drawing color.
+{ 
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glColor3f(1.0, 1.0, 1.0);//Set drawing color to white
+
+    checkWin(); //Loop through all bricks to make sure a win has not occurred
+    checkLoss(); //Check that a loss has not occurred by making sure that there is either a ball currently on screen, or there is at least one life remaining
+    
+    
+    if (gameStart == false) //Display a tutorial screen
+    {
+        tutorial();
+    }
+
+    else if (win == true) //Display a win screen
+    {
+        winScreen();
+    }
+
+    else if (loss == true) //Display a lose screen
+    {
+        lossScreen();
+    }
+
+    else //Display the game
+    {
+
+        if (liveBall == true)
+        {
+            fillCircle(radius, ballX, ballY);
+
+            if (ballLR == 'l')
+            {
+                ballX = ballX - 5;
+            }
+
+            else if (ballLR == 'r')
+            {
+                ballX = ballX + 5;
+            }
+
+            else
+            {
+                if (stallCount >= 5)
+                {
+                    if (rand() % 2 == 1)
+                    {
+                        ballLR = 'l';
+                    }
+                    else
+                    {
+                        ballLR = 'r';
+                    }
+                }
+
+                else
+                {
+                    stallCount++;
+                }
+            }
+
+            if (ballUD == 'u')
+            {
+                ballY = ballY + 5;
+            }
+
+            else if (ballUD == 'd')
+            {
+                ballY = ballY - 5;
+            }
+
+            else
+            {
+                if (stallCount >= 5)
+                {
+                    stallCount = 0;
+                    ballUD = 'd';
+                }
+            }
+        }
+
+
+        paddle(); //Draw the paddle
+        drawLives(); //Draw the lives counter
+        placeBricks(); //Draw the bricks
+
+
+        wallCollision(); //Check if the ball is currently colliding with the walls (or floor and ceiling)
+        paddleCollision(); //Check if the ball is currently colliding with the paddle
+        brickCollision(); //Check if the ball is currently colliding with the bricks
+    }
+    musicTime++;
+
+
+    glutSwapBuffers();
+
+    glFlush();
+    
+    
+}
+
+void keyboard_func(unsigned char c, int x, int y) //Function to handle key presses
+{
+
+    if (c == ' ' && liveBall == false && lives>0 && gameStart == true) //If the user presses space after the game has been started and there is currently not a living ball, create a new ball.
+    {
+        liveBall = true;
+        ballX = (rand()%500)+250;
+        ballY = 300;
+        ballUD = 's';
+        ballLR = 's';
+        lives--;
+    }
+
+    else if (gameStart == false && c == ' ') //If the user presses space and the game has not started, start the game.
+    {
+        gameStart = true;
+
+        liveBall = true;
+        ballX = (rand() % 500) + 250;
+        ballY = 300;
+        ballUD = 's';
+        ballLR = 's';
+        lives--;
+    }
+
+
+    if (c == 'd' && paddleX+150<windowLen) //Move the paddle right, as long as doing so would not move it off screen.
+    {
+        paddleX = paddleX + 15;
+    }
+    
+    if (c == 'a' && paddleX>0) //Move the paddle left, as long as doing so would not move it off screen.
+    {
+        paddleX = paddleX - 15;
+    }
+}
+
+void pattern_display(void)
+
+{
+    glutPostRedisplay(); //<=====
+    Sleep(SPEED);
+}
+
+int main(int argc, char** argv)
+{
+    for (int i = 0; i < 100; i++)
+    {
+        bricks[i] = true;
+    }
+    playMusic();
+    srand(time(NULL));
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
+    glutInitWindowSize(windowLen, windowHeight); //Set the size of the window to 600x600
+    glutCreateWindow("Breakout: Anthony Rowan"); //Creates and names the window that will display the shapes.
+    init();
+    glutDisplayFunc(display); //Run the display function.
+    glutIdleFunc(pattern_display);
+    glutKeyboardFunc(keyboard_func);
+    glutMainLoop(); //Run the main glut functions
+}
