@@ -14,12 +14,14 @@ Create music
 Have music tracks play dependant on the number of lives remaining
 Have music tracks loop
 Add sound effects for the ball bouncing off of different surfaces
+Increasing speed as time goes on, resets when a new ball is spawned (suggested by Dr. Kim)
+Fix the bug in which 3-4 bricks can be destroyed at once due to an error in the collision function
 */
 
 
-float rowColorR[5] = { 1,0, 0,0.5,1}; //Store the RGB values for the colors of the bricks
-float rowColorG[5] = { 0, 1,0,0,1};
-float rowColorB[5] = { 0, 0,1,0.5,0};
+float rowColorR[5] = { 1,0, 0,0.5,1 }; //Store the RGB values for the colors of the bricks
+float rowColorG[5] = { 0, 1,0,0,1 };
+float rowColorB[5] = { 0, 0,1,0.5,0 };
 
 bool bricks[100]; //An array to store the status of every brick.
 
@@ -57,7 +59,7 @@ void playMusic() //This is the function to play the different music tracks.
     {
         PlaySound(TEXT("3Lives.wav"), NULL, SND_ASYNC);
     }
-    
+
     else if (lives == 2) //Song for 2 spare lives remaining
     {
         PlaySound(TEXT("2Lives.wav"), NULL, SND_ASYNC);
@@ -80,7 +82,7 @@ void placeBricks() //This function will place the bricks and lines used to help 
     {
         for (int i = 0; i < windowLen; i += brickLen) //Place the 20 bricks in each row.
         {
-            if (bricks[i/brickLen + ((row - 1) * 20)] == true)
+            if (bricks[i / brickLen + ((row - 1) * 20)] == true)
             {
                 glColor3f(rowColorR[row - 1], rowColorG[row - 1], rowColorB[row - 1]);
                 glBegin(GL_POLYGON);
@@ -157,7 +159,7 @@ void drawLives() //This function will draw both the icon and text to show the us
     fillCircle(10, 15, 485);
     glRasterPos2f(30, 475);
     glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, 'x');
-    glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, lives+48);
+    glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, lives + 48); //The ASCII codes for numbers start with 0 at code 48, so the correct ASCII code can be obtained by adding 48 to the lives count. This does cause issues with lives above 9, so if that is wanted, this function will need changed.
 }
 
 void wallCollision() //This is a function to track the ball's collision with a wall.
@@ -200,7 +202,7 @@ void brickCollision() //This function is used to check for collision between the
                 int brickY = 450 - (brickHeight * (row + 1)); //Find the y value of the brick by multiplying the number of rows by the brick height.
                 //std::cout << "Row: " << row << " Column: " << col << "\n"; //TESTING PURPOSES ONLY, REMOVE BEFORE SUBMISSION
 
-                if (ballX + radius >= brickX && ballX - radius <= brickX + brickLen && ballY + radius >= brickY && ballY - radius <= brickY + brickHeight) 
+                if (ballX + radius >= brickX && ballX - radius <= brickX + brickLen && ballY + radius >= brickY && ballY - radius <= brickY + brickHeight)
                     /*Check if the ball is colliding with the brick.
                     This should be done by comparing the ball's values to the brick's values, and ensuring that the ball's values are inside of the brick's values.
                     ballX + radius >= brickX checks that the right side of the ball is to the right of, or at the left side of the brick.
@@ -210,11 +212,25 @@ void brickCollision() //This function is used to check for collision between the
                 {
                     if (ballX <= brickX || ballX >= brickX + brickLen) //If the ballX is <= than brickX or >= brickX+brickLen, then it hit the brick on the side, so the horizontal direction should be reversed.
                     {
-                        bounceLR();
+                        if (ballX <= brickX)
+                        {
+                            ballLR = 'l';
+                        }
+                        else if (ballX > brickX + brickLen)
+                        {
+                            ballLR = 'r';
+                        }
                     }
                     else //If the brick was not hit on its side, it was hit on the top or bottom, so reverse the vertical direction.
                     {
-                        bounceUD();
+                        if (ballY <= brickY)
+                        {
+                            ballUD = 'd';
+                        }
+                        else if (ballY > brickY)
+                        {
+                            ballUD = 'u';
+                        }
                     }
 
                     bricks[i] = false; //"Kill" the brick
@@ -236,7 +252,7 @@ void resetBricks() //TEST FUNCTION, REMOVE BEFORE SUBMISSION
 
 
 
-void init() 
+void init()
 {
     glClearColor(0.0, 0.0, 0.0, 1.0); //Set background color to black
     glMatrixMode(GL_PROJECTION);
@@ -270,10 +286,10 @@ void tutorial()
     std::string controls = "Use the A and D keys to move the paddle left and right. Use the space key to spawn a new ball.";
     std::string start = "Press space to begin!";
 
-    glRasterPos2f(5, windowHeight-20);
+    glRasterPos2f(5, windowHeight - 20);
     for (int i = 0; i < intro.length(); i++)
     {
-        glutBitmapCharacter (GLUT_BITMAP_HELVETICA_18, intro[i]);
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, intro[i]);
     }
 
     glRasterPos2f(0, windowHeight - 60);
@@ -320,14 +336,14 @@ void lossScreen()
 }
 
 void display() //Run all of the functions to draw the shapes, as well as change the drawing color.
-{ 
+{
     glClear(GL_COLOR_BUFFER_BIT);
 
     glColor3f(1.0, 1.0, 1.0);//Set drawing color to white
 
     checkWin(); //Loop through all bricks to make sure a win has not occurred
     checkLoss(); //Check that a loss has not occurred by making sure that there is either a ball currently on screen, or there is at least one life remaining
-    
+
 
     if (gameStart == false) //Display a tutorial screen
     {
@@ -419,17 +435,17 @@ void display() //Run all of the functions to draw the shapes, as well as change 
     glutSwapBuffers();
 
     glFlush();
-    
-    
+
+
 }
 
 void keyboard_func(unsigned char c, int x, int y) //Function to handle key presses
 {
 
-    if (c == ' ' && liveBall == false && lives>0 && gameStart == true) //If the user presses space after the game has been started and there is currently not a living ball, create a new ball.
+    if (c == ' ' && liveBall == false && lives > 0 && gameStart == true) //If the user presses space after the game has been started and there is currently not a living ball, create a new ball.
     {
         liveBall = true;
-        ballX = (rand()%500)+250;
+        ballX = (rand() % 500) + 250;
         ballY = 300;
         ballUD = 's';
         ballLR = 's';
@@ -449,12 +465,12 @@ void keyboard_func(unsigned char c, int x, int y) //Function to handle key press
     }
 
 
-    else if (c == 'd' && paddleX+200<windowLen) //Move the paddle right, as long as doing so would not move it off screen.
+    else if (c == 'd' && paddleX + 200 < windowLen) //Move the paddle right, as long as doing so would not move it off screen.
     {
         paddleX = paddleX + 15;
     }
-    
-    else if (c == 'a' && paddleX>0) //Move the paddle left, as long as doing so would not move it off screen.
+
+    else if (c == 'a' && paddleX > 0) //Move the paddle left, as long as doing so would not move it off screen.
     {
         paddleX = paddleX - 15;
     }
@@ -472,9 +488,22 @@ void pattern_display(void)
     Sleep(SPEED);
 }
 
+void arrowFunc(int key, int x, int y)
+{
+     if (key == GLUT_KEY_RIGHT && paddleX + 200 < windowLen) //Move the paddle right, as long as doing so would not move it off screen.
+     {
+         paddleX = paddleX + 15;
+    }
+
+     else if (GLUT_KEY_LEFT && paddleX > 0) //Move the paddle left, as long as doing so would not move it off screen.
+     {
+         paddleX = paddleX - 15;
+    }
+}
+
 int main(int argc, char** argv)
 {
-    for (int i = 0; i < 100; i++)
+    for (int i = 0; i < 100; i++) //Set the value of all the bricks to be "alive" when the game starts
     {
         bricks[i] = true;
     }
@@ -488,5 +517,6 @@ int main(int argc, char** argv)
     glutDisplayFunc(display); //Run the display function.
     glutIdleFunc(pattern_display);
     glutKeyboardFunc(keyboard_func);
+    glutSpecialFunc(arrowFunc);
     glutMainLoop(); //Run the main glut functions
 }

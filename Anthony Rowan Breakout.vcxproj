@@ -128,6 +128,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="circle.h" />
+    <ClInclude Include="miniaudio.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
