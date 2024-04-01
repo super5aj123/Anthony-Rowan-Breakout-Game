@@ -25,9 +25,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Media Include="3Lives.wav">
-      <Filter>Resource Files</Filter>
-    </Media>
     <Media Include="wallBounce.wav">
       <Filter>Resource Files</Filter>
     </Media>

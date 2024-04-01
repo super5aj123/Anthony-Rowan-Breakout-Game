@@ -10,8 +10,6 @@ Create start screen
 Create game over screen
 Create win screen
 Randomize ball spawn location
-Have ball bounce on bricks
-Have bricks be destroyed by ball
 Create music
 Have music tracks play dependant on the number of lives remaining
 Have music tracks loop
@@ -30,7 +28,7 @@ bool bricks[100]; //An array to store the status of every brick.
 int windowLen = 1000;
 int windowHeight = 500;
 
-int lives = 4;
+int lives = 99; //TEMP VALUE CHANGE TO 4 BEFORE SUBMISSION
 
 int musicTime = 0;
 const int SPEED = 17; //Number of ms to wait between refreshing the screen. A value of 17 should be around 60 FPS, as 1000(# of ms)/60 = 16.666666...
@@ -45,9 +43,9 @@ int stallCount = 0;
 
 int paddleX = 425; //This variable will hold the x position of the left side of the paddle. The other side will be calculated on the fly.
 
-bool win = false;
+bool win = false; //Bool values to store which state the game should be in: tutorial screen, win screen, or lose screen.
 bool loss = false;
-bool gameStart = false; //TEMPORARY VALUE, SET TO FALSE BEFORE SUBMISSION
+bool gameStart = false;
 
 const int brickLen = 50;
 const int brickHeight = 25;
@@ -82,19 +80,22 @@ void placeBricks() //This function will place the bricks and lines used to help 
     {
         for (int i = 0; i < windowLen; i += brickLen) //Place the 20 bricks in each row.
         {
-            glColor3f(rowColorR[row - 1], rowColorG[row - 1], rowColorB[row - 1]);
-            glBegin(GL_POLYGON);
-            glVertex2i(i, 450 - (brickHeight * row));
-            glVertex2i(i + brickLen, 450 - (brickHeight * row));
-            glVertex2i(i + brickLen, 450 - (brickHeight * (row - 1)));
-            glVertex2i(i, 450 - (brickHeight * (row - 1)));
-            glEnd();
+            if (bricks[i/brickLen + ((row - 1) * 20)] == true)
+            {
+                glColor3f(rowColorR[row - 1], rowColorG[row - 1], rowColorB[row - 1]);
+                glBegin(GL_POLYGON);
+                glVertex2i(i, 450 - (brickHeight * row));
+                glVertex2i(i + brickLen, 450 - (brickHeight * row));
+                glVertex2i(i + brickLen, 450 - (brickHeight * (row - 1)));
+                glVertex2i(i, 450 - (brickHeight * (row - 1)));
+                glEnd();
 
-            glColor3f(0, 0, 0); //Place the vertical lines.
-            glBegin(GL_LINES);
-            glVertex2i(i + brickLen, 450 - (brickHeight * row));
-            glVertex2i(i + brickLen, 450 - (brickHeight * (row - 1)));
-            glEnd();
+                glColor3f(0, 0, 0); //Place the vertical lines.
+                glBegin(GL_LINES);
+                glVertex2i(i + brickLen, 450 - (brickHeight * row));
+                glVertex2i(i + brickLen, 450 - (brickHeight * (row - 1)));
+                glEnd();
+            }
         }
     }
 }
@@ -104,8 +105,8 @@ void paddle() //This is the function to draw the paddle on the screen.
 {
     glBegin(GL_POLYGON);
     glVertex2i(paddleX, 50);
-    glVertex2i(paddleX + 150, 50);
-    glVertex2i(paddleX + 150, 60);
+    glVertex2i(paddleX + 200, 50);
+    glVertex2i(paddleX + 200, 60);
     glVertex2i(paddleX, 60);
     glEnd();
 
@@ -117,7 +118,7 @@ void paddleCollision() //This is a function to check if the ball is in contact w
     {
         for (int i = ballX - 10; i <= ballX + 10; i++)
         {
-            if (ballY - 10 <= 60 && ballY - 10 >= 50 && i >= paddleX && i <= paddleX + 150)
+            if (ballY - 10 <= 60 && ballY - 10 >= 50 && i >= paddleX && i <= paddleX + 200)
             {
                 ballUD = 'u';
                 return;
@@ -159,23 +160,58 @@ void wallCollision() //This is a function to track the ball's collision with a w
     }
 }
 
+
 void brickCollision()
 {
-    if (ballY >= 325) //Only check for a collision of the ball is at, or above the bricks.
+    if (ballY >= 325) //Check that the ball is in the proper y value to be hitting a brick
     {
+        for (int i = 0; i < 100; i++)
+        {
+            if (bricks[i] == true) //Check if the brick is "alive"
+            {
+                int row = i / 20; //Calculate the row of the brick as in int value, in order to remove any decimal values.
+                int col = i % 20; //Calculate the column of the brick as an int value in order to remove any decimal values.
+                int brickX = col * brickLen; //Find the x value of the brick.
+                int brickY = 450 - (brickHeight * (row + 1)); //Find the y value of the brick.
 
-        int brickNum = (ballX / brickLen) - 1; //The number of the brick in it's row, as well as the brick to the left and right of it. Begins at 0.
-        int leftBrick = brickNum - 1;
-        int rightBrick = brickNum + 1;
+                if (ballX + radius >= brickX && ballX - radius <= brickX + brickLen && ballY + radius >= brickY && ballY - radius <= brickY + brickHeight) //Check if the ball is colliding with the brick
+                {
+                    if (ballX <= brickX || ballX >= brickX + brickLen) //The ball has collided with the brick, so check if it was on the left or right of the brick, and if it was, reverse the horizontal direction. This is done by seeing if the ball's center x position is to the left or right of the brick, and if it is, the ball hit the brick on its side.
+                    {
+                        if (ballLR == 'l')
+                        {
+                            ballLR = 'r';
+                        }
 
-        int ballTop = ballY + 10; //The Y coordinates of the top and bottom of the ball.
-        int ballBottom = ballY - 10;
-        int ballLeft = ballX - 10; //The X coordinates of the left and right of the ball.
-        int ballRight = ballX + 10;
+                        else if (ballLR == 'r')
+                        {
+                            ballLR = 'l';
+                        }
+                    }
+                    else //If the brick was not hit on its side, it was hit on the top or bottom, so reverse the vertical direction.
+                    {
+                        if (ballUD == 'u')
+                        {
+                            ballUD = 'd';
+                        }
 
+                        else if (ballUD == 'd')
+                        {
+                            ballUD = 'u';
+                        }
+                    }
 
+                    bricks[i] = false; //"Kill" the brick
+                    return; //The brick has been destroyed, so stop looping on this frame.
+                }
+            }
+        }
     }
 }
+
+
+
+
 
 void init() 
 {
@@ -238,12 +274,26 @@ void tutorial()
 
 void winScreen()
 {
+    glColor3f(0, 1, 0);
+    glRasterPos2f(0, 400);
+    std::string message = "YOU WIN!";
 
+    for (int i = 0; i < message.length(); i++)
+    {
+        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, message[i]);
+    }
 }
 
 void lossScreen()
 {
+    glColor3f(1, 0, 0);
+    glRasterPos2f(0, 400);
+    std::string message = "YOU LOSE";
 
+    for (int i = 0; i < message.length(); i++)
+    {
+        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, message[i]);
+    }
 }
 
 void display() //Run all of the functions to draw the shapes, as well as change the drawing color.
@@ -255,7 +305,7 @@ void display() //Run all of the functions to draw the shapes, as well as change 
     checkWin(); //Loop through all bricks to make sure a win has not occurred
     checkLoss(); //Check that a loss has not occurred by making sure that there is either a ball currently on screen, or there is at least one life remaining
     
-    
+
     if (gameStart == false) //Display a tutorial screen
     {
         tutorial();
@@ -302,10 +352,7 @@ void display() //Run all of the functions to draw the shapes, as well as change 
                     }
                 }
 
-                else
-                {
-                    stallCount++;
-                }
+
             }
 
             if (ballUD == 'u')
@@ -324,6 +371,11 @@ void display() //Run all of the functions to draw the shapes, as well as change 
                 {
                     stallCount = 0;
                     ballUD = 'd';
+                }
+
+                else
+                {
+                    stallCount++;
                 }
             }
         }
@@ -374,7 +426,7 @@ void keyboard_func(unsigned char c, int x, int y) //Function to handle key press
     }
 
 
-    if (c == 'd' && paddleX+150<windowLen) //Move the paddle right, as long as doing so would not move it off screen.
+    if (c == 'd' && paddleX+200<windowLen) //Move the paddle right, as long as doing so would not move it off screen.
     {
         paddleX = paddleX + 15;
     }
