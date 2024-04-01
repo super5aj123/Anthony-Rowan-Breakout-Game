@@ -112,6 +112,31 @@ void paddle() //This is the function to draw the paddle on the screen.
 
 }
 
+void bounceUD() //This function reverses the vertical motion of the ball.
+{
+    if (ballUD == 'u')
+    {
+        ballUD = 'd';
+    }
+    else if (ballUD == 'd')
+    {
+        ballUD = 'u';
+    }
+}
+
+void bounceLR() //This function reverses the horizontal motion of the ball.
+{
+    if (ballLR == 'l')
+    {
+        ballLR = 'r';
+    }
+
+    else if (ballLR == 'r')
+    {
+        ballLR = 'l';
+    }
+}
+
 void paddleCollision() //This is a function to check if the ball is in contact with the top of the paddle.
 {
     if (ballY - 10 <= 60)
@@ -120,7 +145,7 @@ void paddleCollision() //This is a function to check if the ball is in contact w
         {
             if (ballY - 10 <= 60 && ballY - 10 >= 50 && i >= paddleX && i <= paddleX + 200)
             {
-                ballUD = 'u';
+                bounceUD();
                 return;
             }
         }
@@ -139,13 +164,13 @@ void wallCollision() //This is a function to track the ball's collision with a w
 {
     if (ballX - radius <= 0)//If the left of the ball hits the wall
     {
-        ballLR = 'r';
+        bounceLR();
         PlaySound(TEXT("wallBounce.wav"), NULL, SND_ASYNC);
     }
 
     if (ballX + radius >= windowLen)//If the right side of the ball hits the wall
     {
-        ballLR = 'l';
+        bounceLR();
         PlaySound(TEXT("wallBounce.wav"), NULL, SND_ASYNC);
     }
 
@@ -156,12 +181,12 @@ void wallCollision() //This is a function to track the ball's collision with a w
 
     if (ballY + radius >= windowHeight) //If the top of the ball hits the wall
     {
-        ballUD = 'd';
+        bounceUD();
     }
 }
 
 
-void brickCollision()
+void brickCollision() //This function is used to check for collision between the ball and bricks, as well as to bounce the ball off the bricks.
 {
     if (ballY >= 325) //Check that the ball is in the proper y value to be hitting a brick
     {
@@ -171,34 +196,25 @@ void brickCollision()
             {
                 int row = i / 20; //Calculate the row of the brick as in int value, in order to remove any decimal values.
                 int col = i % 20; //Calculate the column of the brick as an int value in order to remove any decimal values.
-                int brickX = col * brickLen; //Find the x value of the brick.
-                int brickY = 450 - (brickHeight * (row + 1)); //Find the y value of the brick.
+                int brickX = col * brickLen; //Find the left x value of the brick by multiplying the number of columns by the brick length.
+                int brickY = 450 - (brickHeight * (row + 1)); //Find the y value of the brick by multiplying the number of rows by the brick height.
+                //std::cout << "Row: " << row << " Column: " << col << "\n"; //TESTING PURPOSES ONLY, REMOVE BEFORE SUBMISSION
 
-                if (ballX + radius >= brickX && ballX - radius <= brickX + brickLen && ballY + radius >= brickY && ballY - radius <= brickY + brickHeight) //Check if the ball is colliding with the brick
+                if (ballX + radius >= brickX && ballX - radius <= brickX + brickLen && ballY + radius >= brickY && ballY - radius <= brickY + brickHeight) 
+                    /*Check if the ball is colliding with the brick.
+                    This should be done by comparing the ball's values to the brick's values, and ensuring that the ball's values are inside of the brick's values.
+                    ballX + radius >= brickX checks that the right side of the ball is to the right of, or at the left side of the brick.
+                    ballX - radius <= brickX + brickLen checks that the left side of the ball is to the left of or at the right side of the brick.
+                    ballY + radius >= brickY checks that the top of the ball is above or at the bottom of the brick
+                    ballY - radius <= brickY + brickHeight checks that the bottom of the ball is below or at the top of the brick.*/
                 {
-                    if (ballX <= brickX || ballX >= brickX + brickLen) //The ball has collided with the brick, so check if it was on the left or right of the brick, and if it was, reverse the horizontal direction. This is done by seeing if the ball's center x position is to the left or right of the brick, and if it is, the ball hit the brick on its side.
+                    if (ballX <= brickX || ballX >= brickX + brickLen) //If the ballX is <= than brickX or >= brickX+brickLen, then it hit the brick on the side, so the horizontal direction should be reversed.
                     {
-                        if (ballLR == 'l')
-                        {
-                            ballLR = 'r';
-                        }
-
-                        else if (ballLR == 'r')
-                        {
-                            ballLR = 'l';
-                        }
+                        bounceLR();
                     }
                     else //If the brick was not hit on its side, it was hit on the top or bottom, so reverse the vertical direction.
                     {
-                        if (ballUD == 'u')
-                        {
-                            ballUD = 'd';
-                        }
-
-                        else if (ballUD == 'd')
-                        {
-                            ballUD = 'u';
-                        }
+                        bounceUD();
                     }
 
                     bricks[i] = false; //"Kill" the brick
@@ -209,6 +225,13 @@ void brickCollision()
     }
 }
 
+void resetBricks() //TEST FUNCTION, REMOVE BEFORE SUBMISSION
+{
+    for (int i = 0; i < 100; i++)
+    {
+        bricks[i] = true;
+    }
+}
 
 
 
@@ -426,14 +449,19 @@ void keyboard_func(unsigned char c, int x, int y) //Function to handle key press
     }
 
 
-    if (c == 'd' && paddleX+200<windowLen) //Move the paddle right, as long as doing so would not move it off screen.
+    else if (c == 'd' && paddleX+200<windowLen) //Move the paddle right, as long as doing so would not move it off screen.
     {
         paddleX = paddleX + 15;
     }
     
-    if (c == 'a' && paddleX>0) //Move the paddle left, as long as doing so would not move it off screen.
+    else if (c == 'a' && paddleX>0) //Move the paddle left, as long as doing so would not move it off screen.
     {
         paddleX = paddleX - 15;
+    }
+
+    else if (c == 'r') //TEST, REMOVE BEFORE SUBMISSION
+    {
+        resetBricks();
     }
 }
 
