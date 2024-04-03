@@ -114,30 +114,6 @@ void paddle() //This is the function to draw the paddle on the screen.
 
 }
 
-void bounceUD() //This function reverses the vertical motion of the ball.
-{
-    if (ballUD == 'u')
-    {
-        ballUD = 'd';
-    }
-    else if (ballUD == 'd')
-    {
-        ballUD = 'u';
-    }
-}
-
-void bounceLR() //This function reverses the horizontal motion of the ball.
-{
-    if (ballLR == 'l')
-    {
-        ballLR = 'r';
-    }
-
-    else if (ballLR == 'r')
-    {
-        ballLR = 'l';
-    }
-}
 
 void paddleCollision() //This is a function to check if the ball is in contact with the top of the paddle.
 {
@@ -147,7 +123,7 @@ void paddleCollision() //This is a function to check if the ball is in contact w
         {
             if (ballY - 10 <= 60 && ballY - 10 >= 50 && i >= paddleX && i <= paddleX + 200)
             {
-                bounceUD();
+                ballUD = 'u';
                 return;
             }
         }
@@ -166,13 +142,13 @@ void wallCollision() //This is a function to track the ball's collision with a w
 {
     if (ballX - radius <= 0)//If the left of the ball hits the wall
     {
-        bounceLR();
+        ballLR = 'r';
         PlaySound(TEXT("wallBounce.wav"), NULL, SND_ASYNC);
     }
 
     if (ballX + radius >= windowLen)//If the right side of the ball hits the wall
     {
-        bounceLR();
+        ballLR = 'l';
         PlaySound(TEXT("wallBounce.wav"), NULL, SND_ASYNC);
     }
 
@@ -183,7 +159,7 @@ void wallCollision() //This is a function to track the ball's collision with a w
 
     if (ballY + radius >= windowHeight) //If the top of the ball hits the wall
     {
-        bounceUD();
+        ballUD = 'd';
     }
 }
 
@@ -210,7 +186,7 @@ void brickCollision() //This function is used to check for collision between the
                     ballY + radius >= brickY checks that the top of the ball is above or at the bottom of the brick
                     ballY - radius <= brickY + brickHeight checks that the bottom of the ball is below or at the top of the brick.*/
                 {
-                    if (ballX <= brickX || ballX >= brickX + brickLen) //If the ballX is <= than brickX or >= brickX+brickLen, then it hit the brick on the side, so the horizontal direction should be reversed.
+                    if (ballX+radius <= brickX || ballX-radius >= brickX + brickLen) //If the ballX is <= than brickX or >= brickX+brickLen, then it hit the brick on the side, so the horizontal direction should be reversed.
                     {
                         if (ballX <= brickX)
                         {
@@ -234,7 +210,7 @@ void brickCollision() //This function is used to check for collision between the
                     }
 
                     bricks[i] = false; //"Kill" the brick
-                    return; //The brick has been destroyed, so stop looping on this frame.
+                    //I originally had the program return after destroying a brick, but I thought it could be cool if multiple bricks could be destroyed at once, so I removed it. Now, if the ball hits in between 2 bricks, they will both be destroyed.
                 }
             }
         }
