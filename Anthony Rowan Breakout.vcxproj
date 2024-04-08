@@ -136,6 +136,7 @@
   <ItemGroup>
     <Media Include="Brick.wav" />
     <Media Include="Death.wav" />
+    <Media Include="Paddle.wav" />
     <Media Include="wallBounce.wav" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -6,10 +6,6 @@
 
 #include "circle.h"
 
-/*TODO:
-Create win screen
-Polish
-*/
 
 
 float rowColorR[5] = { 1,0, 0,0.5,1 }; //Store the RGB values for the colors of the bricks
@@ -23,7 +19,7 @@ bool bricks[100]; //An array to store the status of every brick.
 int windowLen = 1000;
 int windowHeight = 500;
 
-int lives = 999; //TEMP VALUE CHANGE TO 4 BEFORE SUBMISSION
+int lives = 4;
 
 int musicTime = 0;
 const int SPEED = 17; //Number of ms to wait between refreshing the screen. A value of 17 should be around 60 FPS, as 1000(# of ms)/60 = 16.666666...
@@ -46,9 +42,7 @@ bool gameStart = false;
 const int brickLen = 50;
 const int brickHeight = 25;
 
-int currentTime = 0; //Variable to track the current time. Will be used to calculate the game's speed, as well as the end time.
-
-int ballTime = 0; //The time that the current ball was spawned.
+int endTime = 0; //Variable to track the current time. Will be used to calculate the game's speed, as well as the end time.
 
 int gameStartTime = 0; //The time that the game began
 
@@ -106,6 +100,7 @@ void paddleCollision() //This is a function to check if the ball is in contact w
                 {
                     ballSpeed++;
                 }
+                PlaySound(TEXT("Paddle.wav"), NULL, SND_ASYNC);
                 return;
             }
         }
@@ -164,7 +159,6 @@ void brickCollision() //This function is used to check for collision between the
                 int col = i % 20; //Calculate the column of the brick as an int value in order to remove any decimal values.
                 int brickX = col * brickLen; //Find the left x value of the brick by multiplying the number of columns by the brick length.
                 int brickY = 450 - (brickHeight * (row + 1)); //Find the y value of the brick by multiplying the number of rows by the brick height.
-                //std::cout << "Row: " << row << " Column: " << col << "\n"; //TESTING PURPOSES ONLY, REMOVE BEFORE SUBMISSION
 
                 if (ballX + radius >= brickX && ballX - radius <= brickX + brickLen && ballY + radius >= brickY && ballY - radius <= brickY + brickHeight)
                     /*Check if the ball is colliding with the brick.
@@ -207,13 +201,6 @@ void brickCollision() //This function is used to check for collision between the
     }
 }
 
-void resetBricks() //TEST FUNCTION, REMOVE BEFORE SUBMISSION
-{
-    for (int i = 0; i < 100; i++)
-    {
-        bricks[i] = true;
-    }
-}
 
 
 
@@ -225,7 +212,7 @@ void init()
     gluOrtho2D(0, windowLen, 0, windowHeight); //Create the viewbox, and set its size.
 }
 
-void checkWin() //A function to check if the player has won the game.
+void checkWin() //A function to check if the player has won the game, by looping through all the bricks and checking if there are any left.
 {
     for (int i = 0; i < 100; i++)
     {
@@ -234,22 +221,29 @@ void checkWin() //A function to check if the player has won the game.
             return;
         }
     }
-    win = true;
+    if (win == false)
+    {
+        win = true;
+        endTime = time(NULL);
+    }
+    
 }
 
-void checkLoss()
+void checkLoss() //Check if the user has any lives remaining, and if there is currently a ball in play. If there isn't, they have lost.
 {
-    if (lives == 0 && liveBall == false)
+    if (lives == 0 && liveBall == false && loss == false)
     {
         loss = true;
+        endTime = time(NULL);
     }
 }
 
-void tutorial()
+void tutorial() //A function to tell the user how to play the game.
 {
     std::string intro = "Welcome to Breakout! Use the paddle to bounce the ball and break the bricks.";
     std::string intro2 = " The game is lost when all lives are lost. The game is won when all bricks are destroyed.";
     std::string controls = "Use the A and D, or arrow keys to move the paddle left and right. Use the space key to spawn a new ball.";
+    std::string ballExplanation = "The ball will grow faster every time it hits the paddle, until it hits its maximum speed.";
     std::string start = "Press space to begin!";
 
     glRasterPos2f(5, windowHeight - 20);
@@ -271,25 +265,43 @@ void tutorial()
     }
 
     glRasterPos2f(5, windowHeight - 140);
+    for (int i = 0; i < ballExplanation.length(); i++)
+    {
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, ballExplanation[i]);
+    }
+
+    glRasterPos2f(5, windowHeight - 180);
     for (int i = 0; i < start.length(); i++)
     {
         glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, start[i]);
     }
 }
 
-void winScreen()
+void winScreen() //A function to display a screen to show the user that they have won, and how long it took them.
 {
     glColor3f(0, 1, 0);
-    glRasterPos2f(0, 400);
+    glRasterPos2f(450, 360);
     std::string message = "YOU WIN!";
 
     for (int i = 0; i < message.length(); i++)
     {
         glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, message[i]);
     }
+
+    int secondsCount = endTime - gameStartTime;
+    int minutes = secondsCount / 60;
+    int seconds = secondsCount % 60;
+
+    std::string timeMessage = "Time taken: " + std::to_string(minutes) + " minutes, " + std::to_string(seconds) + " seconds";
+
+    glRasterPos2f(350, 300);
+    for (int i = 0; i < timeMessage.length(); i++)
+    {
+        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, timeMessage[i]);
+    }
 }
 
-void lossScreen()
+void lossScreen() //A function to display a screen telling the user that they have lost, and the number of bricks that were left.
 {
     glColor3f(1, 0, 0);
     glRasterPos2f(450, 250);
@@ -316,7 +328,6 @@ void lossScreen()
     {
         glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, bricksOutput[i]);
     }
-    int endTime = currentTime - gameStartTime;
 
     int minutes = endTime / 60;
     int seconds = endTime % 60;
@@ -325,7 +336,6 @@ void lossScreen()
 
 void display() //Run all of the functions to draw the shapes, as well as change the drawing color.
 {
-    currentTime = time(NULL);
     glClear(GL_COLOR_BUFFER_BIT);
 
     glColor3f(1.0, 1.0, 1.0);//Set drawing color to white
@@ -455,7 +465,6 @@ void keyboard_func(unsigned char c, int x, int y) //Function to handle key press
 
         ballSpeed = 2;
         gameStartTime = time(NULL);
-        currentTime = gameStartTime;
     }
 
 
@@ -471,7 +480,10 @@ void keyboard_func(unsigned char c, int x, int y) //Function to handle key press
 
     else if (c == 'r') //TEST, REMOVE BEFORE SUBMISSION
     {
-        lives = 0;
+        for (int i = 0; i < 100; i++)
+        {
+            bricks[i] = false;
+        }
     }
 }
 

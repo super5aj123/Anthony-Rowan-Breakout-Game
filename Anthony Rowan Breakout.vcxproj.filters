@@ -18,6 +18,9 @@
     <ClInclude Include="circle.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="miniaudio.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -32,6 +35,9 @@
       <Filter>Resource Files</Filter>
     </Media>
     <Media Include="Brick.wav">
+      <Filter>Resource Files</Filter>
+    </Media>
+    <Media Include="Paddle.wav">
       <Filter>Resource Files</Filter>
     </Media>
   </ItemGroup>
