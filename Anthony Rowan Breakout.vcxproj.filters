@@ -31,5 +31,8 @@
     <Media Include="wallBounce.wav">
       <Filter>Resource Files</Filter>
     </Media>
+    <Media Include="Death.wav">
+      <Filter>Resource Files</Filter>
+    </Media>
   </ItemGroup>
 </Project>

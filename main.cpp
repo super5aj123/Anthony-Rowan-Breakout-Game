@@ -1,21 +1,20 @@
-#include "circle.h"
 #include <GL/glut.h>
-#include <time.h>
 #include <windows.h>
 #include <iostream>
 #include <string>
+#include <ctime>
+
+#include "circle.h"
+#include "miniaudio.h"
 
 /*TODO:
-Create start screen
-Create game over screen
 Create win screen
-Randomize ball spawn location
 Create music
 Have music tracks play dependant on the number of lives remaining
 Have music tracks loop
 Add sound effects for the ball bouncing off of different surfaces
-Increasing speed as time goes on, resets when a new ball is spawned (suggested by Dr. Kim)
-Fix the bug in which 3-4 bricks can be destroyed at once due to an error in the collision function
+Add a death sound effect
+Polish
 */
 
 
@@ -30,18 +29,19 @@ bool bricks[100]; //An array to store the status of every brick.
 int windowLen = 1000;
 int windowHeight = 500;
 
-int lives = 99; //TEMP VALUE CHANGE TO 4 BEFORE SUBMISSION
+int lives = 999; //TEMP VALUE CHANGE TO 4 BEFORE SUBMISSION
 
 int musicTime = 0;
 const int SPEED = 17; //Number of ms to wait between refreshing the screen. A value of 17 should be around 60 FPS, as 1000(# of ms)/60 = 16.666666...
 
 bool liveBall = false; //Variable to track if there is currently a ball. If there is a ball, this will be true, otherwise it will be false. It starts as false.
-int ballX = 400; //The X and Y location of the ball's center. This will be randomly generated when the game is complete, but is set to the center for now.
+int ballX = 400; //The X and Y location of the ball's center.
 int ballY = 360;
 char ballLR = 'l'; //Variable to track the ball's horizontal direction.
 char ballUD = 'd'; //Variable to track the ball's vertical direction.
 const int radius = 10;
-int stallCount = 0;
+int stallCount = 0; //Variable to track if it's time for the ball to move. This is done to let the user find the ball when it spawns.
+int ballSpeed = 2; //Variable to track the speed of the ball.
 
 int paddleX = 425; //This variable will hold the x position of the left side of the paddle. The other side will be calculated on the fly.
 
@@ -52,27 +52,34 @@ bool gameStart = false;
 const int brickLen = 50;
 const int brickHeight = 25;
 
+int currentTime = 0; //Variable to track the current time. Will be used to calculate the game's speed, as well as the end time.
+
+int ballTime = 0; //The time that the current ball was spawned.
+
+int gameStartTime = 0; //The time that the game began
+
+
 void playMusic() //This is the function to play the different music tracks.
 {
 
     if (lives == 3) //Song for all lives remaining
     {
-        PlaySound(TEXT("3Lives.wav"), NULL, SND_ASYNC);
+        
     }
 
     else if (lives == 2) //Song for 2 spare lives remaining
     {
-        PlaySound(TEXT("2Lives.wav"), NULL, SND_ASYNC);
+       
     }
 
     else if (lives == 1) //Song for 1 spare life remaining
     {
-        PlaySound(TEXT("1Lives.wav"), NULL, SND_ASYNC);
+        
     }
 
     else if (lives == 0) //Song for final life
     {
-        PlaySound(TEXT("0Lives.wav"), NULL, SND_ASYNC);
+        
     }
 }
 
@@ -124,6 +131,10 @@ void paddleCollision() //This is a function to check if the ball is in contact w
             if (ballY - 10 <= 60 && ballY - 10 >= 50 && i >= paddleX && i <= paddleX + 200)
             {
                 ballUD = 'u';
+                if (ballSpeed < 5)
+                {
+                    ballSpeed++;
+                }
                 return;
             }
         }
@@ -140,27 +151,33 @@ void drawLives() //This function will draw both the icon and text to show the us
 
 void wallCollision() //This is a function to track the ball's collision with a wall.
 {
-    if (ballX - radius <= 0)//If the left of the ball hits the wall
+    if (liveBall == true)
     {
-        ballLR = 'r';
-        PlaySound(TEXT("wallBounce.wav"), NULL, SND_ASYNC);
+        if (ballX - radius <= 0)//If the left of the ball hits the wall
+        {
+            ballLR = 'r';
+            PlaySound(TEXT("wallBounce.wav"), NULL, SND_ASYNC);
+        }
+
+        if (ballX + radius >= windowLen)//If the right side of the ball hits the wall
+        {
+            ballLR = 'l';
+            PlaySound(TEXT("wallBounce.wav"), NULL, SND_ASYNC);
+        }
+
+        if (ballY - radius <= 0) //If the bottom of the ball hits the wall
+        {
+            liveBall = false; //If the ball hits the floor, it should die.
+            PlaySound(TEXT("Death.wav"), NULL, SND_ASYNC);
+        }
+
+        if (ballY + radius >= windowHeight) //If the top of the ball hits the wall
+        {
+            ballUD = 'd';
+            PlaySound(TEXT("wallBounce.wav"), NULL, SND_ASYNC);
+        }
     }
 
-    if (ballX + radius >= windowLen)//If the right side of the ball hits the wall
-    {
-        ballLR = 'l';
-        PlaySound(TEXT("wallBounce.wav"), NULL, SND_ASYNC);
-    }
-
-    if (ballY - radius <= 0) //If the bottom of the ball hits the wall
-    {
-        liveBall = false; //If the ball hits the floor, it should die.
-    }
-
-    if (ballY + radius >= windowHeight) //If the top of the ball hits the wall
-    {
-        ballUD = 'd';
-    }
 }
 
 
@@ -186,30 +203,31 @@ void brickCollision() //This function is used to check for collision between the
                     ballY + radius >= brickY checks that the top of the ball is above or at the bottom of the brick
                     ballY - radius <= brickY + brickHeight checks that the bottom of the ball is below or at the top of the brick.*/
                 {
-                    if (ballX+radius <= brickX || ballX-radius >= brickX + brickLen) //If the ballX is <= than brickX or >= brickX+brickLen, then it hit the brick on the side, so the horizontal direction should be reversed.
+                    if (ballX + radius <= brickX+5 || ballX - radius >= brickX + brickLen-5) //If the ballX is <= than brickX or >= brickX+brickLen, then it hit the brick on the side, so the horizontal direction should be reversed.
                     {
-                        if (ballX <= brickX)
+                        if (ballX <= brickX && ballLR == 'r')
                         {
                             ballLR = 'l';
                         }
-                        else if (ballX > brickX + brickLen)
+                        else if (ballX > brickX + brickLen && ballLR == 'l')
                         {
                             ballLR = 'r';
                         }
                     }
                     else //If the brick was not hit on its side, it was hit on the top or bottom, so reverse the vertical direction.
                     {
-                        if (ballY <= brickY)
+                        if (ballY <= brickY && ballUD == 'u')
                         {
                             ballUD = 'd';
                         }
-                        else if (ballY > brickY)
+                        else if (ballY > brickY && ballUD == 'd')
                         {
                             ballUD = 'u';
                         }
                     }
 
                     bricks[i] = false; //"Kill" the brick
+                    return;
                     //I originally had the program return after destroying a brick, but I thought it could be cool if multiple bricks could be destroyed at once, so I removed it. Now, if the ball hits in between 2 bricks, they will both be destroyed.
                 }
             }
@@ -259,7 +277,7 @@ void tutorial()
 {
     std::string intro = "Welcome to Breakout! Use the paddle to bounce the ball and break the bricks.";
     std::string intro2 = " The game is lost when all lives are lost. The game is won when all bricks are destroyed.";
-    std::string controls = "Use the A and D keys to move the paddle left and right. Use the space key to spawn a new ball.";
+    std::string controls = "Use the A and D, or arrow keys to move the paddle left and right. Use the space key to spawn a new ball.";
     std::string start = "Press space to begin!";
 
     glRasterPos2f(5, windowHeight - 20);
@@ -302,17 +320,40 @@ void winScreen()
 void lossScreen()
 {
     glColor3f(1, 0, 0);
-    glRasterPos2f(0, 400);
+    glRasterPos2f(450, 250);
     std::string message = "YOU LOSE";
 
     for (int i = 0; i < message.length(); i++)
     {
         glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, message[i]);
     }
+
+    int bricksLeft = 0;
+    for (int i = 0; i < 100; i++)
+    {
+        if (bricks[i] == true)
+        {
+            bricksLeft++;
+        }
+    }
+    std::string bricksOutput = std::to_string(bricksLeft);
+    bricksOutput = "Bricks Remaining: " + bricksOutput;
+
+    glRasterPos2f(450, 200);
+    for (int i = 0; i < bricksOutput.length(); i++)
+    {
+        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, bricksOutput[i]);
+    }
+    int endTime = currentTime - gameStartTime;
+
+    int minutes = endTime / 60;
+    int seconds = endTime % 60;
+    std::string timeMessage = "You beat the game in " + std::to_string(minutes) + " minutes, and " + std::to_string(seconds) + " seconds";
 }
 
 void display() //Run all of the functions to draw the shapes, as well as change the drawing color.
 {
+    currentTime = time(NULL);
     glClear(GL_COLOR_BUFFER_BIT);
 
     glColor3f(1.0, 1.0, 1.0);//Set drawing color to white
@@ -345,12 +386,12 @@ void display() //Run all of the functions to draw the shapes, as well as change 
 
             if (ballLR == 'l')
             {
-                ballX = ballX - 5;
+                ballX = ballX - ballSpeed;
             }
 
             else if (ballLR == 'r')
             {
-                ballX = ballX + 5;
+                ballX = ballX + ballSpeed;
             }
 
             else
@@ -372,12 +413,12 @@ void display() //Run all of the functions to draw the shapes, as well as change 
 
             if (ballUD == 'u')
             {
-                ballY = ballY + 5;
+                ballY = ballY + ballSpeed;
             }
 
             else if (ballUD == 'd')
             {
-                ballY = ballY - 5;
+                ballY = ballY - ballSpeed;
             }
 
             else
@@ -425,6 +466,7 @@ void keyboard_func(unsigned char c, int x, int y) //Function to handle key press
         ballY = 300;
         ballUD = 's';
         ballLR = 's';
+        ballSpeed = 2;
         lives--;
     }
 
@@ -438,6 +480,10 @@ void keyboard_func(unsigned char c, int x, int y) //Function to handle key press
         ballUD = 's';
         ballLR = 's';
         lives--;
+
+        ballSpeed = 2;
+        gameStartTime = time(NULL);
+        currentTime = gameStartTime;
     }
 
 
@@ -453,7 +499,7 @@ void keyboard_func(unsigned char c, int x, int y) //Function to handle key press
 
     else if (c == 'r') //TEST, REMOVE BEFORE SUBMISSION
     {
-        resetBricks();
+        lives = 0;
     }
 }
 
