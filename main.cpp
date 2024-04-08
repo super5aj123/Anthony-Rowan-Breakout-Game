@@ -477,14 +477,6 @@ void keyboard_func(unsigned char c, int x, int y) //Function to handle key press
     {
         paddleX = paddleX - 15;
     }
-
-    else if (c == 'r') //TEST, REMOVE BEFORE SUBMISSION
-    {
-        for (int i = 0; i < 100; i++)
-        {
-            bricks[i] = false;
-        }
-    }
 }
 
 void pattern_display(void)
