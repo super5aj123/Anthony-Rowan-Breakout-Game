@@ -5,15 +5,9 @@
 #include <ctime>
 
 #include "circle.h"
-#include "miniaudio.h"
 
 /*TODO:
 Create win screen
-Create music
-Have music tracks play dependant on the number of lives remaining
-Have music tracks loop
-Add sound effects for the ball bouncing off of different surfaces
-Add a death sound effect
 Polish
 */
 
@@ -59,29 +53,6 @@ int ballTime = 0; //The time that the current ball was spawned.
 int gameStartTime = 0; //The time that the game began
 
 
-void playMusic() //This is the function to play the different music tracks.
-{
-
-    if (lives == 3) //Song for all lives remaining
-    {
-        
-    }
-
-    else if (lives == 2) //Song for 2 spare lives remaining
-    {
-       
-    }
-
-    else if (lives == 1) //Song for 1 spare life remaining
-    {
-        
-    }
-
-    else if (lives == 0) //Song for final life
-    {
-        
-    }
-}
 
 void placeBricks() //This function will place the bricks and lines used to help the user differentiate them.
 {
@@ -203,7 +174,7 @@ void brickCollision() //This function is used to check for collision between the
                     ballY + radius >= brickY checks that the top of the ball is above or at the bottom of the brick
                     ballY - radius <= brickY + brickHeight checks that the bottom of the ball is below or at the top of the brick.*/
                 {
-                    if (ballX + radius <= brickX+5 || ballX - radius >= brickX + brickLen-5) //If the ballX is <= than brickX or >= brickX+brickLen, then it hit the brick on the side, so the horizontal direction should be reversed.
+                    if (ballX + radius <= brickX + 5 || ballX - radius >= brickX + brickLen - 5) //If the ballX is <= than brickX or >= brickX+brickLen, then it hit the brick on the side, so the horizontal direction should be reversed.
                     {
                         if (ballX <= brickX && ballLR == 'r')
                         {
@@ -229,7 +200,7 @@ void brickCollision() //This function is used to check for collision between the
                     bricks[i] = false; //"Kill" the brick
                     PlaySound(TEXT("Brick.wav"), NULL, SND_ASYNC);
                     return;
-                    //I originally had the program return after destroying a brick, but I thought it could be cool if multiple bricks could be destroyed at once, so I removed it. Now, if the ball hits in between 2 bricks, they will both be destroyed.
+
                 }
             }
         }
@@ -530,7 +501,6 @@ int main(int argc, char** argv)
     {
         bricks[i] = true;
     }
-    playMusic();
     srand(time(NULL));
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
