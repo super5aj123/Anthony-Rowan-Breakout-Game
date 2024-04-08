@@ -227,6 +227,7 @@ void brickCollision() //This function is used to check for collision between the
                     }
 
                     bricks[i] = false; //"Kill" the brick
+                    PlaySound(TEXT("Brick.wav"), NULL, SND_ASYNC);
                     return;
                     //I originally had the program return after destroying a brick, but I thought it could be cool if multiple bricks could be destroyed at once, so I removed it. Now, if the ball hits in between 2 bricks, they will both be destroyed.
                 }
