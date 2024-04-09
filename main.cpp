@@ -6,6 +6,10 @@
 
 #include "circle.h"
 
+//Anthony Rowan
+//4/8/24
+//This program will run a game of Breakout.
+
 
 
 float rowColorR[5] = { 1,0, 0,0.5,1 }; //Store the RGB values for the colors of the bricks
